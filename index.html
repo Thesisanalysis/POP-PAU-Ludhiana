@@ -3,11 +3,12 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>PAU Crop Calendar / Scheduler (Embed)</title>
-  <meta name="description" content="Accurate PAU-style crop calendar: date-wise irrigation, fertilizer splits, weeding & plant protection. Exports CSV/ICS.">
+  <title>PAU Crop Calendar / Scheduler</title>
+  <meta name="description" content="Accurate PAU-style crop calendar: date-wise irrigation, fertilizer splits, weeding & plant protection. Export CSV/ICS.">
   <style>
     :root{--bg:#f7fff7;--card:#fff;--accent:#1e7b32;--muted:#3a6748;--text:#06351b}
-    *{box-sizing:border-box} body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;color:var(--text);background:linear-gradient(180deg,#f6fff6 0%,#eaf9ea 100%)}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;color:var(--text);background:linear-gradient(180deg,#f6fff6 0%,#eaf9ea 100%)}
     .wrap{max-width:980px;margin:20px auto;padding:16px}
     header{display:flex;align-items:center;gap:10px}
     header h1{margin:0;font-size:20px}
@@ -26,7 +27,6 @@
     .chips{display:flex;gap:8px;flex-wrap:wrap}
     .chip{background:#e7f7e8;padding:6px 10px;border-radius:999px;font-size:12px;color:var(--muted)}
     footer{margin-top:14px;font-size:12px;color:var(--muted)}
-    .lang{margin-left:auto;cursor:pointer;color:var(--accent)}
   </style>
 </head>
 <body>
@@ -34,9 +34,8 @@
     <header>
       <div>
         <h1>PAU Crop Calendar / Scheduler</h1>
-        <div style="font-size:13px;color:var(--muted)">Accurate PAU doses & timings (2024–25). Export CSV or add to phone calendar.</div>
+        <div style="font-size:13px;color:var(--muted)">Accurate PAU doses & timings (subject to latest PoP). Export CSV or add to calendar.</div>
       </div>
-      <div class="lang" id="langToggle">ਪੰਜਾਬੀ</div>
     </header>
 
     <div class="card" style="margin-top:12px">
@@ -60,9 +59,9 @@
           <input id="sowing" type="date" />
         </div>
 
-        <div style="min-width:160px">
-          <label for="variety">Variety (optional)</label>
-          <input id="variety" placeholder="e.g., PR 126 / PR 132 / PBW 826" />
+        <div style="min-width:200px">
+          <label for="variety">Variety / Type (optional)</label>
+          <input id="variety" placeholder="e.g., PR 126 / PR 132 / Bt Hybrid" />
         </div>
       </div>
 
@@ -104,10 +103,11 @@
       <div id="tableWrap" style="margin-top:12px"></div>
     </div>
 
-    <footer>Verify product names & thresholds from the PAU PoP book before application.</footer>
+    <footer>Note: Verify doses, product names & thresholds from the latest PAU Package of Practices before application.</footer>
   </div>
-<script src="data_crops.js"></script>
-  <script src="./script.js"></script>
+
+  <!-- Load your data first, then the logic -->
+  <script src="data_crops.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
-
