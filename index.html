@@ -1,46 +1,97 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Crop Calendar - PAU Package of Practices</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f5fff5;
-      margin: 0;
-      padding: 20px;
-    }
-    h1 { color: #2b7a2b; }
-    .container {
-      max-width: 800px;
-      margin: auto;
-      background: white;
-      padding: 20px;
-      border-radius: 10px;
-      box-shadow: 0 0 10px #ccc;
-    }
-    select, button {
-      padding: 10px;
-      margin: 10px 0;
-      font-size: 16px;
-    }
-    #cropDetails {
-      margin-top: 20px;
-      padding: 15px;
-      border-left: 5px solid #2b7a2b;
-      background: #f9f9f9;
-    }
-    p { margin: 5px 0; }
-  </style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>PAU Crop Calendar / Scheduler</title>
+  <meta name="description" content="PAU Crop Calendar (Wheat, Paddy, Maize, Cotton, Mustard, Potato, Sugarcane, Berseem) — bilingual (EN/PA). Generate date-wise schedule, export CSV / ICS." />
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="container">
-    <h1>Crop Calendar / Package of Practices</h1>
-    <label for="cropSelect"><b>Select Crop:</b></label>
-    <select id="cropSelect" onchange="showDetails()"></select>
-    <div id="cropDetails"><p>Please select a crop.</p></div>
-  </div>
-  <script src="data_crops.js"></script>
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">🌾</div>
+      <div>
+        <div class="title">PAU Crop Calendar / Scheduler</div>
+        <div class="subtitle">PAU-style crop operations & schedule (English ↔ ਪੰਜਾਬੀ)</div>
+      </div>
+    </div>
+    <div class="controls-top">
+      <button id="langToggle" class="btn-ghost">ਪੰਜਾਬੀ</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="card">
+      <h2>Planner</h2>
+      <div class="grid">
+        <div>
+          <label for="season">Season</label>
+          <select id="season">
+            <option value="Rabi">Rabi (Winter)</option>
+            <option value="Kharif">Kharif (Monsoon)</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="crop">Crop</label>
+          <select id="crop"></select>
+        </div>
+
+        <div>
+          <label for="sowingDate">Sowing / Transplanting Date</label>
+          <input id="sowingDate" type="date" />
+        </div>
+
+        <div>
+          <label for="variety">Variety (optional)</label>
+          <input id="variety" placeholder="e.g., HD 3086 / PR 126" />
+        </div>
+      </div>
+
+      <div class="inline-tools">
+        <label class="inline"><input id="incIrr" type="checkbox" checked /> Irrigation</label>
+        <label class="inline"><input id="incFert" type="checkbox" checked /> Fertilizer</label>
+        <label class="inline"><input id="incWeed" type="checkbox" checked /> Weed mgmt</label>
+        <label class="inline"><input id="incPP" type="checkbox" checked /> Plant protection</label>
+
+        <div style="margin-left:auto">
+          <button id="generateBtn" class="btn">Generate Calendar</button>
+          <button id="resetBtn" class="btn ghost">Reset</button>
+        </div>
+      </div>
+
+      <div id="summary" class="summary"></div>
+    </section>
+
+    <section id="scheduleCard" class="card">
+      <div class="card-header">
+        <h3>Schedule</h3>
+        <div class="export">
+          <button id="downloadCSV" class="btn ghost">Download CSV</button>
+          <button id="downloadICS" class="btn">Add to Calendar (.ics)</button>
+          <button id="printBtn" class="btn ghost">Print</button>
+        </div>
+      </div>
+      <div id="scheduleList" class="schedule-list">
+        <!-- tasks appear here -->
+        <div class="empty">No schedule yet. Choose crop, date and click Generate Calendar.</div>
+      </div>
+    </section>
+
+    <section class="card small">
+      <h4>Notes</h4>
+      <ul>
+        <li>This tool uses PAU Package of Practices (Rabi 2024–25 & Kharif 2025) as source. Verify product brand/dose using the official PoP for your exact variety/field conditions.</li>
+        <li>All fertilizer doses are shown <b>per acre</b>. You can convert to ha in the script if needed.</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer class="footer">
+    Created with PAU PoP • By Dr Singh EE
+  </footer>
+
   <script src="script.js"></script>
 </body>
 </html>
