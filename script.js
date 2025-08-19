@@ -1,36 +1,32 @@
 // script.js
 
-const cropSelect = document.getElementById("cropSelect");
-const cropInfoDiv = document.getElementById("cropInfo");
-
-// ✅ Populate dropdown dynamically
-for (const key in cropData) {
-  const option = document.createElement("option");
-  option.value = key;
-  option.textContent = cropData[key].name;
-  cropSelect.appendChild(option);
+function loadCrops() {
+    const cropSelect = document.getElementById("cropSelect");
+    cropSelect.innerHTML = `<option value="">-- Select Crop --</option>`;
+    Object.keys(cropData).forEach(crop => {
+        cropSelect.innerHTML += `<option value="${crop}">${crop}</option>`;
+    });
 }
 
-// ✅ Show info when crop selected
-cropSelect.addEventListener("change", function () {
-  const cropKey = this.value;
+function showDetails() {
+    const crop = document.getElementById("cropSelect").value;
+    const detailsDiv = document.getElementById("cropDetails");
+    if (!crop || !cropData[crop]) {
+        detailsDiv.innerHTML = "<p>Please select a crop.</p>";
+        return;
+    }
 
-  if (!cropKey || !cropData[cropKey]) {
-    cropInfoDiv.style.display = "none";
-    cropInfoDiv.innerHTML = "";
-    return;
-  }
+    const data = cropData[crop];
+    detailsDiv.innerHTML = `
+        <h2>${crop}</h2>
+        <p><b>Season:</b> ${data.season}</p>
+        <p><b>Sowing Time:</b> ${data.sowingTime}</p>
+        <p><b>Varieties:</b> ${data.varieties}</p>
+        <p><b>Seed Rate:</b> ${data.seedRate}</p>
+        <p><b>Fertilizer Dose:</b> ${data.fertilizer}</p>
+        <p><b>Irrigation Schedule:</b> ${data.irrigation}</p>
+        <p><b>Plant Protection:</b> ${data.plantProtection}</p>
+    `;
+}
 
-  const crop = cropData[cropKey];
-
-  cropInfoDiv.style.display = "block";
-  cropInfoDiv.innerHTML = `
-    <h2>${crop.name}</h2>
-    <p><strong>Season:</strong> ${crop.season}</p>
-    <p><strong>Sowing Time:</strong> ${crop.sowingTime}</p>
-    <p><strong>Seed Rate:</strong> ${crop.seedRate}</p>
-    <p><strong>Fertilizer:</strong> ${crop.fertilizer}</p>
-    <p><strong>Irrigation:</strong> ${crop.irrigation}</p>
-    <p><strong>Plant Protection:</strong> ${crop.plantProtection}</p>
-  `;
-});
+window.onload = loadCrops;
