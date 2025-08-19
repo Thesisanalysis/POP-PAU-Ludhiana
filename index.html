@@ -1,113 +1,75 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>PAU Crop Calendar / Scheduler</title>
-  <meta name="description" content="Accurate PAU-style crop calendar: date-wise irrigation, fertilizer splits, weeding & plant protection. Export CSV/ICS.">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Crop Information (PAU POP)</title>
   <style>
-    :root{--bg:#f7fff7;--card:#fff;--accent:#1e7b32;--muted:#3a6748;--text:#06351b}
-    *{box-sizing:border-box}
-    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;color:var(--text);background:linear-gradient(180deg,#f6fff6 0%,#eaf9ea 100%)}
-    .wrap{max-width:980px;margin:20px auto;padding:16px}
-    header{display:flex;align-items:center;gap:10px}
-    header h1{margin:0;font-size:20px}
-    .card{background:var(--card);border-radius:12px;padding:14px;box-shadow:0 6px 18px rgba(6,53,27,.06);border:1px solid rgba(12,56,28,.06)}
-    .controls{display:grid;grid-template-columns:1fr;gap:10px;margin-top:12px}
-    @media(min-width:760px){.controls{grid-template-columns:repeat(3,1fr)}}
-    label{font-size:13px;color:var(--muted);display:block;margin-bottom:6px}
-    select,input{width:100%;padding:10px;border-radius:8px;border:1px solid #dfefe0}
-    .btn{background:var(--accent);color:#fff;padding:10px 12px;border-radius:8px;border:none;cursor:pointer}
-    .btn.secondary{background:transparent;border:1px solid #d1e9d7;color:var(--text)}
-    .tools{display:flex;gap:8px;flex-wrap:wrap}
-    #summary{margin-top:10px;color:var(--muted);font-size:13px}
-    table{width:100%;border-collapse:collapse}
-    thead th{background:#f0fbf0;padding:8px;text-align:left;border-bottom:1px solid #e2f1e2}
-    tbody td{padding:8px;border-bottom:1px solid #f2f8f2}
-    .chips{display:flex;gap:8px;flex-wrap:wrap}
-    .chip{background:#e7f7e8;padding:6px 10px;border-radius:999px;font-size:12px;color:var(--muted)}
-    footer{margin-top:14px;font-size:12px;color:var(--muted)}
+    body {
+      font-family: Arial, sans-serif;
+      background: #f9f9f9;
+      margin: 0;
+      padding: 0;
+    }
+    header {
+      background: #2e7d32;
+      color: #fff;
+      text-align: center;
+      padding: 15px;
+      font-size: 22px;
+      font-weight: bold;
+    }
+    main {
+      padding: 20px;
+      max-width: 900px;
+      margin: auto;
+    }
+    select {
+      padding: 10px;
+      font-size: 16px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      margin-bottom: 20px;
+      width: 100%;
+    }
+    .card {
+      background: #fff;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      margin-top: 15px;
+    }
+    .card h2 {
+      margin-top: 0;
+      color: #2e7d32;
+    }
+    .card p {
+      margin: 8px 0;
+      line-height: 1.6;
+    }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <header>
-      <div>
-        <h1>PAU Crop Calendar / Scheduler</h1>
-        <div style="font-size:13px;color:var(--muted)">Accurate PAU doses & timings (subject to latest PoP). Export CSV or add to calendar.</div>
-      </div>
-    </header>
 
-    <div class="card" style="margin-top:12px">
-      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:end">
-        <div style="flex:1;min-width:160px">
-          <label for="season">Season</label>
-          <select id="season">
-            <option value="">-- Select Season --</option>
-            <option value="Rabi">Rabi (Winter)</option>
-            <option value="Kharif">Kharif (Monsoon)</option>
-          </select>
-        </div>
+<header>
+  Crop Information (PAU Package of Practices)
+</header>
 
-        <div style="flex:1;min-width:180px">
-          <label for="crop">Crop</label>
-          <select id="crop"></select>
-        </div>
+<main>
+  <label for="cropSelect">Select a Crop:</label>
+  <select id="cropSelect">
+    <option value="">-- Select Crop --</option>
+    <option value="wheat">Wheat</option>
+    <option value="paddy">Paddy (Rice)</option>
+    <option value="maize">Maize</option>
+    <option value="cotton">Cotton</option>
+    <option value="barley">Barley</option>
+  </select>
 
-        <div style="min-width:180px">
-          <label for="sowing">Sowing / Transplanting Date</label>
-          <input id="sowing" type="date" />
-        </div>
+  <div id="cropInfo" class="card" style="display: none;"></div>
+</main>
 
-        <div style="min-width:200px">
-          <label for="variety">Variety / Type (optional)</label>
-          <input id="variety" placeholder="e.g., PR 126 / PR 132 / Bt Hybrid" />
-        </div>
-      </div>
-
-      <div class="controls" style="margin-top:10px">
-        <div>
-          <label>Include</label>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <label class="chip"><input id="incIrr" type="checkbox" checked style="margin-right:6px"/>Irrigation</label>
-            <label class="chip"><input id="incFert" type="checkbox" checked style="margin-right:6px"/>Fertilizer</label>
-            <label class="chip"><input id="incWeed" type="checkbox" checked style="margin-right:6px"/>Weed mgmt</label>
-            <label class="chip"><input id="incPP" type="checkbox" checked style="margin-right:6px"/>Plant protection</label>
-          </div>
-        </div>
-
-        <div>
-          <label>Area (optional)</label>
-          <div style="display:flex;gap:8px">
-            <input id="area" type="number" step="0.01" placeholder="e.g., 2.5" />
-            <select id="areaUnit" style="width:110px"><option value="acre">acre</option><option value="ha">ha</option></select>
-          </div>
-        </div>
-
-        <div style="display:flex;align-items:flex-end;gap:8px">
-          <div class="tools">
-            <button id="generate" class="btn">Generate Calendar</button>
-            <button id="reset" class="btn secondary">Reset</button>
-          </div>
-        </div>
-      </div>
-
-      <div id="summary"></div>
-
-      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:10px">
-        <button id="downloadCSV" class="btn secondary">Download CSV</button>
-        <button id="downloadICS" class="btn">Add to Calendar (.ics)</button>
-        <button id="print" class="btn secondary">Print</button>
-      </div>
-
-      <div id="tableWrap" style="margin-top:12px"></div>
-    </div>
-
-    <footer>Note: Verify doses, product names & thresholds from the latest PAU Package of Practices before application.</footer>
-  </div>
-
-  <!-- Load your data first, then the logic -->
-  <script src="data_crops.js"></script>
-  <script src="script.js"></script>
+<script src="data_crops.js"></script>
+<script src="script.js"></script>
 </body>
 </html>
