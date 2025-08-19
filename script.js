@@ -1,163 +1,334 @@
-// --- utilities ---
-const fmt = d=>new Date(d).toLocaleDateString(undefined,{year:'numeric',month:'short',day:'2-digit'});
-const addDays = (d,days)=>{ const nd=new Date(d); nd.setDate(nd.getDate()+days); return nd; };
+/* script.js – English-only logic (expects window.POP_DATA from data_crops.js) */
 
-// --- state & dom ---
-const seasonEl = document.getElementById('season');
-const cropEl = document.getElementById('crop');
-const sowingEl = document.getElementById('sowing');
-const varietyEl = document.getElementById('variety');
-const summaryEl = document.getElementById('summary');
-const tableWrap = document.getElementById('tableWrap');
+/* ========== Utils ========== */
+const fmt = d =>
+  new Date(d).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "2-digit" });
 
-// --- load json (baked-in for blogger; if you self-host, you can also fetch JSON) ---
-let POP = null;
-(async function bootstrap(){
-  POP = window.POP_DATA; // from inline file
-  // populate crops when season changes
-  seasonEl.addEventListener('change', ()=>{
-    const s = seasonEl.value;
-    cropEl.innerHTML = '<option value="">-- Select Crop --</option>';
-    if(!s || !POP[s]) return;
-    Object.keys(POP[s]).forEach(c=>{
-      const o=document.createElement('option'); o.value=c; o.textContent=c; cropEl.appendChild(o);
+const addDays = (d, days) => {
+  const nd = new Date(d);
+  nd.setDate(nd.getDate() + days);
+  return nd;
+};
+
+const byDay = (a, b) => a.day - b.day;
+
+/* ICS helpers (all-day events for simplicity) */
+const pad2 = n => String(n).padStart(2, "0");
+const yyyymmdd = d => `${d.getUTCFullYear()}${pad2(d.getUTCMonth() + 1)}${pad2(d.getUTCDate())}`;
+const icsEscape = s =>
+  String(s || "")
+    .replace(/\\/g, "\\\\")
+    .replace(/\n/g, "\\n")
+    .replace(/;/g, "\\;")
+    .replace(/,/g, "\\,");
+
+/* CSV helpers */
+const csvEscape = s => `"${String(s || "").replace(/"/g, '""')}"`;
+
+/* ========== DOM ========== */
+const seasonEl = document.getElementById("season");
+const cropEl = document.getElementById("crop");
+const sowingEl = document.getElementById("sowing");
+const varietyEl = document.getElementById("variety");
+const summaryEl = document.getElementById("summary");
+const tableWrap = document.getElementById("tableWrap");
+
+const incIrrEl = document.getElementById("incIrr");
+const incFertEl = document.getElementById("incFert");
+const incWeedEl = document.getElementById("incWeed");
+const incPPEl = document.getElementById("incPP");
+
+/* ========== Data plumbing ========== */
+function loadCrops() {
+  const s = seasonEl.value;
+  cropEl.innerHTML = '<option value="">-- Select Crop --</option>';
+  if (!s || !window.POP_DATA || !window.POP_DATA[s]) return;
+  Object.keys(window.POP_DATA[s]).forEach(cropName => {
+    if (cropName === "_labelPa") return; // ignore any label helpers if present
+    const o = document.createElement("option");
+    o.value = cropName;
+    o.textContent = cropName;
+    cropEl.appendChild(o);
+  });
+}
+
+seasonEl.addEventListener("change", loadCrops);
+
+document.getElementById("reset").addEventListener("click", () => {
+  seasonEl.value = "";
+  cropEl.innerHTML = "";
+  sowingEl.value = "";
+  varietyEl.value = "";
+  incIrrEl.checked = incFertEl.checked = incWeedEl.checked = incPPEl.checked = true;
+  tableWrap.innerHTML = "";
+  tableWrap.dataset.rows = "[]";
+  summaryEl.textContent = "";
+});
+
+/* Resolve which variant/template to use for a crop (uses variety input loosely) */
+function resolveVariant(template, varietyInput) {
+  if (!template) return null;
+  const keys = Object.keys(template);
+
+  // If variety provided, try exact key match first
+  if (varietyInput) {
+    const exact = keys.find(k => k.toLowerCase() === varietyInput.toLowerCase());
+    if (exact) return template[exact];
+
+    // Try alias match
+    for (const k of keys) {
+      const t = template[k];
+      if (t && Array.isArray(t.aliases)) {
+        const hit = t.aliases.some(a => a.toLowerCase() === varietyInput.toLowerCase());
+        if (hit) return t;
+      }
+    }
+  }
+
+  // If "default" points to another key via $use
+  if (template.default && template.default.$use && template[template.default.$use]) {
+    return template[template.default.$use];
+  }
+
+  // If a "default" object with real content
+  if (template.default && !template.default.$use) {
+    return template.default;
+  }
+
+  // Otherwise first key
+  return template[keys[0]];
+}
+
+function buildEvents(chosen, includes) {
+  if (!chosen) return [];
+
+  const events = [];
+
+  // Fertilizer: basal + splits
+  if (chosen.fertilizer) {
+    if (includes.fert && chosen.fertilizer.basal) {
+      events.push({
+        day: chosen.fertilizer.basal.day || 0,
+        category: "Fertilizer",
+        title: "Basal application",
+        desc: chosen.fertilizer.basal.text || chosen.fertilizer.basal.note || ""
+      });
+    }
+    if (includes.fert && Array.isArray(chosen.fertilizer.splits)) {
+      chosen.fertilizer.splits.forEach(s =>
+        events.push({
+          day: s.day ?? 0,
+          category: "Fertilizer",
+          title: s.note ? `Fertilizer split — ${s.note}` : "Fertilizer split",
+          desc: s.text || ""
+        })
+      );
+    }
+  }
+
+  // Irrigation
+  if (includes.irrig && Array.isArray(chosen.irrigation)) {
+    chosen.irrigation.forEach(i =>
+      events.push({
+        day: i.day ?? 0,
+        category: "Irrigation",
+        title: i.title || "Irrigation",
+        desc: i.note || ""
+      })
+    );
+  }
+
+  // Weed management
+  if (includes.weed && Array.isArray(chosen.weed)) {
+    chosen.weed.forEach(w =>
+      events.push({
+        day: w.day ?? 0,
+        category: "Weed management",
+        title: w.title || "Weed management",
+        desc: w.note || ""
+      })
+    );
+  }
+
+  // Plant protection
+  if (includes.pp && Array.isArray(chosen.pp)) {
+    chosen.pp.forEach(p =>
+      events.push({
+        day: p.day ?? 0,
+        category: "Plant protection",
+        title: p.title || "Plant protection",
+        desc: p.note || ""
+      })
+    );
+  }
+
+  // Harvest (always include as a milestone; doesn’t depend on toggles)
+  if (chosen.harvest && (typeof chosen.harvest.day === "number")) {
+    events.push({
+      day: chosen.harvest.day,
+      category: "Harvest",
+      title: "Harvest window",
+      desc: chosen.harvest.note || ""
     });
-  });
+  }
 
-  document.getElementById('reset').addEventListener('click', ()=>{
-    seasonEl.value=''; cropEl.innerHTML=''; sowingEl.value=''; varietyEl.value='';
-    document.getElementById('incIrr').checked = document.getElementById('incFert').checked = document.getElementById('incWeed').checked = document.getElementById('incPP').checked = true;
-    tableWrap.innerHTML=''; summaryEl.textContent='';
-  });
+  return events.sort(byDay);
+}
 
-  document.getElementById('generate').addEventListener('click', generate);
-  document.getElementById('downloadCSV').addEventListener('click', downloadCSV);
-  document.getElementById('downloadICS').addEventListener('click', downloadICS);
-  document.getElementById('print').addEventListener('click', ()=>{ if(!tableWrap.dataset.rows){ alert('Generate a calendar first.'); return; } window.print(); });
+/* Generate table */
+document.getElementById("generate").addEventListener("click", () => {
+  const season = seasonEl.value;
+  const crop = cropEl.value;
+  const sow = sowingEl.value;
 
-  // Punjabi toggle (simple)
-  const langToggle = document.getElementById('langToggle'); let lang='en';
-  langToggle.addEventListener('click', ()=>{
-    lang = (lang==='en'?'pa':'en'); langToggle.textContent = (lang==='en'?'ਪੰਜਾਬੀ':'English');
-    document.querySelector('header h1').textContent = (lang==='en'?'PAU Crop Calendar / Scheduler':'ਪਾਅ ਫਸਲ ਕੈਲੰਡਰ / ਸ਼ੈਡਿਊਲਰ');
-    document.getElementById('season').options[0].text = (lang==='en'?'-- Select Season --':'-- ਮੌਸਮ ਚੁਣੋ --');
-  });
-})();
+  if (!season || !crop) {
+    alert("Choose season and crop.");
+    return;
+  }
+  if (!sow) {
+    alert("Pick sowing/transplanting date.");
+    return;
+  }
 
-function generate(){
-  const season = seasonEl.value; const crop = cropEl.value; const sow = sowingEl.value;
-  if(!season || !crop){ alert('Choose season and crop.'); return; }
-  if(!sow){ alert('Pick sowing/transplanting date.'); return; }
+  const data = window.POP_DATA?.[season]?.[crop];
+  if (!data || !data.template) {
+    alert("No template found for this crop.");
+    return;
+  }
 
-  const include = {
-    irrig: document.getElementById('incIrr').checked,
-    fert:  document.getElementById('incFert').checked,
-    weed:  document.getElementById('incWeed').checked,
-    pp:    document.getElementById('incPP').checked
+  const includes = {
+    irrig: incIrrEl.checked,
+    fert: incFertEl.checked,
+    weed: incWeedEl.checked,
+    pp: incPPEl.checked
   };
 
-  // resolve template, including variety logic if any
-  const base = POP[season][crop];
-  if(!base){ alert('Template not found.'); return; }
-
-  const v = (varietyEl.value||'').trim();
-  const tpl = chooseTemplate(base, v);
-
-  // build items
-  const all = [];
-  // sowing row
-  all.push({day:0, type:'Milestone', task: base.meta.sowingLabel || 'Sowing / Transplanting', note: base.meta.note||''});
-
-  // irrigation
-  if(include.irrig && tpl.irrigation){
-    tpl.irrigation.forEach(x=>all.push({day:x.day, type:'Irrigation', task:x.title, note:x.note||''}));
+  const chosen = resolveVariant(data.template, (varietyEl.value || "").trim());
+  if (!chosen) {
+    alert("No variety/type template available.");
+    return;
   }
 
-  // fertilizer
-  if(include.fert && tpl.fertilizer){
-    // basal
-    if(tpl.fertilizer.basal){
-      const b = tpl.fertilizer.basal;
-      all.push({day:b.day||0, type:'Fertilizer', task:`Basal: ${b.text}`, note:b.note||''});
-    }
-    // splits
-    (tpl.fertilizer.splits||[]).forEach(s=>{
-      all.push({day:s.day, type:'Fertilizer', task:`Top-dress: ${s.text}`, note:s.note||''});
-    });
-  }
+  const meta = data.meta || {};
+  const events = buildEvents(chosen, includes);
 
-  // weed
-  if(include.weed && tpl.weed){
-    tpl.weed.forEach(w=>all.push({day:w.day, type:'Weed mgmt', task:w.title, note:w.note||''}));
-  }
-
-  // plant protection (scouting windows – product names intentionally omitted)
-  if(include.pp && tpl.pp){
-    tpl.pp.forEach(p=>all.push({day:p.day, type:'Plant protection', task:p.title, note:p.note||''}));
-  }
-
-  // harvest
-  if(tpl.harvest){ all.push({day:tpl.harvest.day, type:'Harvest', task:'Harvest window', note: tpl.harvest.note||''}); }
-
-  // filter/sort and render
   const sDate = new Date(sow);
-  const rows = all
-    .sort((a,b)=>a.day-b.day)
-    .map((it,idx)=>{ const date = addDays(sDate,it.day); return { idx: idx+1, date: fmt(date), iso: date.toISOString(), das: it.day, task: `${it.type}: ${it.task}`, note: it.note || '' }; });
+  const rows = events.map((e, idx) => {
+    const date = addDays(sDate, e.day || 0);
+    return {
+      idx: idx + 1,
+      date: fmt(date),
+      dateISO: new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString(), // for ICS DTSTAMP
+      das: e.day || 0,
+      category: e.category,
+      title: e.title,
+      desc: e.desc || ""
+    };
+  });
 
-  summaryEl.innerHTML = `<div class="chips">
-    <span class="chip">Season: <b>${season}</b></span>
-    <span class="chip">Crop: <b>${crop}</b></span>
-    ${v?`<span class="chip">Variety: <b>${v}</b></span>`:''}
-    ${document.getElementById('area').value?`<span class="chip">Area: <b>${document.getElementById('area').value} ${document.getElementById('areaUnit').value}</b></span>`:''}
-  </div>`;
+  summaryEl.innerHTML =
+    `<div class="chips">
+      <span class="chip">Season: <b>${season}</b></span>
+      <span class="chip">Crop: <b>${crop}</b></span>
+      ${varietyEl.value ? `<span class="chip">Variety/Type: <b>${varietyEl.value}</b></span>` : ""}
+      ${document.getElementById("area").value ? `<span class="chip">Area: <b>${document.getElementById("area").value} ${document.getElementById("areaUnit").value}</b></span>` : ""}
+      ${meta.note ? `<span class="chip">${meta.note}</span>` : ""}
+    </div>`;
 
-  if(!rows.length){ tableWrap.innerHTML='<div style="padding:12px;color:var(--muted)">No tasks after applying filters.</div>'; tableWrap.dataset.rows='[]'; return; }
+  if (!rows.length) {
+    tableWrap.innerHTML = '<div style="padding:12px;color:var(--muted)">No tasks after applying filters.</div>';
+    tableWrap.dataset.rows = "[]";
+    return;
+  }
 
   tableWrap.dataset.rows = JSON.stringify(rows);
-  let html = '<div style="overflow:auto"><table><thead><tr><th>#</th><th>Date</th><th>DAS</th><th>Task</th><th>Notes</th></tr></thead><tbody>';
-  html += rows.map(r=>`<tr><td style="width:36px">${r.idx}</td><td>${r.date}</td><td>${r.das}</td><td>${r.task}</td><td>${r.note}</td></tr>`).join('');
-  html += '</tbody></table></div>';
+
+  let html = '<div style="overflow:auto"><table><thead><tr>' +
+    '<th>#</th><th>Date</th><th>DAS</th><th>Category</th><th>Task</th><th>Notes</th>' +
+    '</tr></thead><tbody>';
+
+  html += rows.map(r =>
+    `<tr>
+      <td style="width:36px">${r.idx}</td>
+      <td>${r.date}</td>
+      <td>${r.das}</td>
+      <td>${r.category}</td>
+      <td>${r.title}</td>
+      <td>${r.desc}</td>
+    </tr>`
+  ).join("");
+
+  html += "</tbody></table></div>";
   tableWrap.innerHTML = html;
-}
+});
 
-function chooseTemplate(base, variety){
-  if(!variety) return base.template.default;
-  const v = variety.toUpperCase().trim();
-  // variety aliases
-  for(const key of Object.keys(base.template)){
-    if(key==='default') continue;
-    const aliases = [key].concat(base.template[key].aliases||[]).map(s=>s.toUpperCase());
-    if(aliases.some(a=>v.includes(a))) return base.template[key];
+/* CSV download */
+document.getElementById("downloadCSV").addEventListener("click", () => {
+  const rows = JSON.parse(tableWrap.dataset.rows || "[]");
+  if (!rows.length) {
+    alert("Generate a calendar first.");
+    return;
   }
-  return base.template.default;
-}
+  const header = ["Index", "Date", "DAS", "Category", "Task", "Notes"];
+  const lines = [header.join(",")].concat(
+    rows.map(r => [r.idx, csvEscape(r.date), r.das, csvEscape(r.category), csvEscape(r.title), csvEscape(r.desc)].join(","))
+  );
+  const blob = new Blob(["\uFEFF" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "crop_calendar_" + Date.now() + ".csv";
+  a.click();
+});
 
-// CSV download
-function downloadCSV(){
-  const rows = JSON.parse(tableWrap.dataset.rows||'[]'); if(!rows.length){ alert('Generate a calendar first.'); return; }
-  const header = ['Index','Date','DAS','Task','Notes'];
-  const lines = [header.join(',')].concat(rows.map(r=>[r.idx, r.date, r.das, '"'+r.task.replace(/"/g,'""')+'"', '"'+r.note.replace(/"/g,'""')+'"'].join(',')));
-  const blob = new Blob(["\ufeff"+lines.join('\n')],{type:'text/csv;charset=utf-8;'});
-  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'crop_calendar_'+Date.now()+'.csv'; a.click();
-}
+/* ICS download (all-day events) */
+document.getElementById("downloadICS").addEventListener("click", () => {
+  const rows = JSON.parse(tableWrap.dataset.rows || "[]");
+  if (!rows.length) {
+    alert("Generate a calendar first.");
+    return;
+  }
+  const now = new Date();
+  let ics = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//PAU Crop Calendar//EN",
+    "CALSCALE:GREGORIAN",
+    "METHOD:PUBLISH",
+    "X-WR-CALNAME:PAU Crop Calendar",
+    "X-WR-TIMEZONE:Asia/Kolkata"
+  ].join("\r\n") + "\r\n";
 
-// ICS download
-function icsEscape(s){ return String(s).replace(/\\/g,'\\\\').replace(/\n/g,'\\n').replace(/\,/g,'\\,').replace(/;/g,'\\;'); }
-function toICSDate(d){ const pad=n=>String(n).padStart(2,'0'); return d.getUTCFullYear()+pad(d.getUTCMonth()+1)+pad(d.getUTCDate())+'T'+pad(d.getUTCHours())+pad(d.getUTCMinutes())+'00Z'; }
-function downloadICS(){
-  const rows = JSON.parse(tableWrap.dataset.rows||'[]'); if(!rows.length){ alert('Generate a calendar first.'); return; }
-  const now = new Date(); let ics = 'BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//PAU Crop Calendar//EN\nCALSCALE:GREGORIAN\n';
-  rows.forEach(r=>{ const start = new Date(r.iso); const s = new Date(start); s.setHours(9,0,0,0); const e = new Date(start); e.setHours(10,0,0,0);
-    ics += 'BEGIN:VEVENT\n';
-    ics += 'UID:'+Date.now()+Math.random().toString(36).slice(2)+'@pau-calendar\n';
-    ics += 'DTSTAMP:'+toICSDate(now)+'\n';
-    ics += 'DTSTART:'+toICSDate(s)+'\n';
-    ics += 'DTEND:'+toICSDate(e)+'\n';
-    ics += 'SUMMARY:'+icsEscape(r.task)+'\n';
-    ics += 'DESCRIPTION:'+icsEscape('DAS '+r.das+' — '+r.note)+'\n';
-    ics += 'END:VEVENT\n';
+  rows.forEach(r => {
+    const d = new Date(r.dateISO);
+    const dUTC = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())); // all-day date
+    ics += [
+      "BEGIN:VEVENT",
+      `UID:${Date.now()}-${Math.random().toString(36).slice(2)}@pau-calendar`,
+      `DTSTAMP:${yyyymmdd(now)}T${pad2(now.getUTCHours())}${pad2(now.getUTCMinutes())}${pad2(now.getUTCSeconds())}Z`,
+      `DTSTART;VALUE=DATE:${yyyymmdd(dUTC)}`,
+      `SUMMARY:${icsEscape(`${r.category}: ${r.title}`)}`,
+      `DESCRIPTION:${icsEscape(`DAS ${r.das} — ${r.desc || ""}`)}`,
+      "END:VEVENT"
+    ].join("\r\n") + "\r\n";
   });
-  ics += 'END:VCALENDAR';
-  const blob = new Blob([ics],{type:'text/calendar'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'crop_calendar_'+Date.now()+'.ics'; a.click();
-}
+
+  ics += "END:VCALENDAR";
+
+  const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "crop_calendar_" + Date.now() + ".ics";
+  a.click();
+});
+
+/* Print */
+document.getElementById("print").addEventListener("click", () => {
+  if (!tableWrap.dataset.rows) {
+    alert("Generate a calendar first.");
+    return;
+  }
+  window.print();
+});
+
+/* Init crops if season preselected */
+if (seasonEl.value) loadCrops();
