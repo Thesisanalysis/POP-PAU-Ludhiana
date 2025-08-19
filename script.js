@@ -52,18 +52,35 @@ function resolveTemplate(season, crop, variety) {
 
 function buildRows(plan, sowingDate, includeFlags) {
   const rows = [];
-  // Fertilizer: basal + splits (if included)
+  const areaVal = parseFloat(byId("area").value) || 1;
+  const areaUnit = byId("areaUnit").value; // "acre" or "ha"
+  const areaFactor = areaUnit === "ha" ? areaVal * 2.47105 : areaVal; // ha → acre
+
+  function scaleFertilizerText(text) {
+    return text.replace(/(\d+(\.\d+)?)\s*kg\/ac/g, (_, n) => `${(parseFloat(n)*areaFactor).toFixed(2)} kg`)
+               .replace(/≈\s*(\d+(\.\d+)?)\s*kg/g, (_, n) => `≈ ${(parseFloat(n)*areaFactor).toFixed(2)} kg`);
+  }
+
+  // Fertilizer
   if (includeFlags.fert && plan.fertilizer) {
     if (plan.fertilizer.basal) {
-      rows.push({ day: plan.fertilizer.basal.day, task: "Fertilizer — Basal", note: plan.fertilizer.basal.text });
+      rows.push({
+        day: plan.fertilizer.basal.day,
+        task: "Fertilizer — Basal",
+        note: scaleFertilizerText(plan.fertilizer.basal.text)
+      });
     }
     if (Array.isArray(plan.fertilizer.splits)) {
       plan.fertilizer.splits.forEach((s, i) => {
-        rows.push({ day: s.day, task: `Fertilizer — Split ${i+1}`, note: s.text });
+        rows.push({
+          day: s.day,
+          task: `Fertilizer — Split ${i+1}`,
+          note: scaleFertilizerText(s.text)
+        });
       });
     }
     if (plan.fertilizer.totalsNote) {
-      rows.push({ day: 0, task: "Fertilizer — Totals (info)", note: plan.fertilizer.totalsNote });
+      rows.push({ day: 0, task: "Fertilizer — Totals (info)", note: scaleFertilizerText(plan.fertilizer.totalsNote) });
     }
     if (plan.fertilizer.doseNotes) {
       rows.push({ day: 0, task: "Fertilizer — Note", note: plan.fertilizer.doseNotes });
@@ -85,7 +102,7 @@ function buildRows(plan, sowingDate, includeFlags) {
     plan.pp.forEach(it => rows.push({ day: it.day, task: "Plant protection", note: `${it.title}${it.note?": "+it.note:""}` }));
   }
 
-  // Harvest (always included)
+  // Harvest
   if (plan.harvest) {
     rows.push({ day: plan.harvest.day, task: "Harvest window", note: plan.harvest.note || "" });
   }
@@ -123,6 +140,7 @@ function showRows(rows, meta, season, crop, variety) {
   tableWrap.innerHTML = html;
 }
 
+// ---------- Generate / Reset ----------
 byId("generate").addEventListener("click", () => {
   const season = seasonEl.value, crop = cropEl.value, sow = sowingEl.value;
   if (!season || !crop) { alert("Choose season and crop."); return; }
@@ -160,10 +178,7 @@ byId("downloadCSV").addEventListener("click", () => {
 });
 
 // ---------- ICS ----------
-function icsDate(d){
-  const pad = (n)=>String(n).padStart(2,"0");
-  return d.getUTCFullYear()+pad(d.getUTCMonth()+1)+pad(d.getUTCDate())+"T"+pad(d.getUTCHours())+pad(d.getUTCMinutes())+"00Z";
-}
+function icsDate(d){ const pad = (n)=>String(n).padStart(2,"0"); return d.getUTCFullYear()+pad(d.getUTCMonth()+1)+pad(d.getUTCDate())+"T"+pad(d.getUTCHours())+pad(d.getUTCMinutes())+"00Z"; }
 function escICS(s){ return String(s).replace(/\\/g,"\\\\").replace(/\n/g,"\\n").replace(/,/g,"\\,").replace(/;/g,"\\;"); }
 
 byId("downloadICS").addEventListener("click", () => {
@@ -196,5 +211,5 @@ byId("print").addEventListener("click", () => {
   window.print();
 });
 
-// Initialize if season pre-selected (Blogger sometimes restores form state)
+// Initialize if season pre-selected
 if (seasonEl.value) loadCrops();
