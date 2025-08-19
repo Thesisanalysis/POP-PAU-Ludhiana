@@ -1,7 +1,19 @@
 // script.js
-document.getElementById("cropSelect").addEventListener("change", function () {
+
+const cropSelect = document.getElementById("cropSelect");
+const cropInfoDiv = document.getElementById("cropInfo");
+
+// ✅ Populate dropdown dynamically
+for (const key in cropData) {
+  const option = document.createElement("option");
+  option.value = key;
+  option.textContent = cropData[key].name;
+  cropSelect.appendChild(option);
+}
+
+// ✅ Show info when crop selected
+cropSelect.addEventListener("change", function () {
   const cropKey = this.value;
-  const cropInfoDiv = document.getElementById("cropInfo");
 
   if (!cropKey || !cropData[cropKey]) {
     cropInfoDiv.style.display = "none";
