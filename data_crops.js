@@ -1,4 +1,4 @@
-<script>
+
 /* ====== POP DATA (PAU 2024–25) ======
    All units are per acre unless noted. “DAS”=days after sowing/transplant.
    Rice values from PAU Kharif 2024–25 (pp. 9–10). Wheat/Mustard from Rabi 2024–25.
@@ -206,4 +206,5 @@ window.POP_DATA = {
     }
   }
 };
-</script>
+
+
