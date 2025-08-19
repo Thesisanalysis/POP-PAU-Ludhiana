@@ -1,0 +1,33 @@
+:root{
+  --bg:#f3fff4; --card:#ffffff; --accent:#1e7b32; --muted:#3c6b4a; --text:#06351b;
+  --danger:#c62828; --info:#1565c0;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;color:var(--text);background:linear-gradient(180deg,#f6fff6 0%,#eaf9ea 100%)}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;background:var(--accent);color:white;position:sticky;top:0;z-index:40}
+.brand{display:flex;gap:10px;align-items:center}
+.logo{font-size:28px}
+.title{font-weight:700}
+.subtitle{font-size:12px;opacity:.95}
+.container{max-width:1100px;margin:18px auto;padding:10px}
+.card{background:var(--card);border-radius:12px;padding:14px;box-shadow:0 6px 18px rgba(6,53,27,.06);border:1px solid rgba(12,56,28,.06);margin-bottom:16px}
+.small{max-width:600px}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+@media(max-width:760px){.grid{grid-template-columns:1fr}}
+label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+select,input{width:100%;padding:10px;border-radius:8px;border:1px solid #dfefe0;background:white}
+.inline-tools{display:flex;gap:12px;align-items:center;margin-top:12px;flex-wrap:wrap}
+.inline{display:flex;align-items:center;gap:8px;background:#e9f8ea;padding:6px 8px;border-radius:999px;font-size:13px;border:1px solid #d7efe0}
+.btn{background:var(--accent);color:white;padding:8px 12px;border-radius:8px;border:none;cursor:pointer;font-weight:600}
+.btn.ghost{background:transparent;color:var(--accent);border:1px solid rgba(30,123,50,.12)}
+.summary{margin-top:12px}
+.card-header{display:flex;align-items:center;justify-content:space-between}
+.export{display:flex;gap:8px}
+.schedule-list{margin-top:12px}
+.task{display:flex;gap:10px;align-items:flex-start;padding:10px;border-radius:10px;margin-bottom:8px;background:#f9fff9;border-left:6px solid var(--accent)}
+.task .meta{font-size:13px;color:var(--muted)}
+.task .title{font-weight:700}
+.tag{padding:4px 8px;border-radius:999px;font-size:12px;background:#e7f7e8;color:var(--muted);border:1px solid rgba(30,123,50,.06);margin-left:auto}
+.empty{padding:18px;border:1px dashed #dbeeda;border-radius:10px;color:var(--muted);text-align:center}
+.footer{padding:12px;text-align:center;font-size:13px;color:#1b5e20;background:linear-gradient(180deg,rgba(30,123,50,.06),transparent)}
+.badge{background:#e6f5e9;border-radius:8px;padding:4px 8px;font-size:12px;color:var(--muted)}
